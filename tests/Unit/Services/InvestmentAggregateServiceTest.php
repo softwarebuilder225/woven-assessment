@@ -34,4 +34,32 @@ class InvestmentAggregateServiceTest extends TestCase
         $this->assertSame(200.0, $service->averageInvestmentAmount());
         $this->assertSame(2, $service->totalInvestments());
     }
+
+    public function test_average_investment_amount_is_per_investor(): void
+    {
+        $investor = Investor::factory()->create();
+
+        Investment::factory()->create([
+            'investor_id' => $investor->id,
+            'amount' => 100.00,
+            'investment_date' => '2024-01-01',
+        ]);
+        Investment::factory()->create([
+            'investor_id' => $investor->id,
+            'amount' => 300.00,
+            'investment_date' => '2024-02-01',
+        ]);
+
+        $other = Investor::factory()->create();
+        Investment::factory()->create([
+            'investor_id' => $other->id,
+            'amount' => 200.00,
+            'investment_date' => '2024-01-01',
+        ]);
+
+        $service = new InvestmentAggregateService;
+
+        // (400 + 200) / 2 investors = 300, not (100+300+200)/3
+        $this->assertSame(300.0, $service->averageInvestmentAmount());
+    }
 }

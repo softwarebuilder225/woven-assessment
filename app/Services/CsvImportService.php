@@ -15,6 +15,8 @@ class CsvImportService
 
     public function import(UploadedFile $file): array
     {
+        DB::connection()->disableQueryLog();
+
         $handle = fopen($file->path(), 'r');
 
         if ($handle === false) {
@@ -39,6 +41,7 @@ class CsvImportService
                     [$investorCount, $investmentCount] = $this->storeChunk($chunk);
                     $investorsProcessed += $investorCount;
                     $investmentsProcessed += $investmentCount;
+                    unset($chunk);
                     $chunk = [];
                 }
             }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Investment;
 use App\Models\Investor;
+use Illuminate\Support\Facades\DB;
 
 class InvestmentAggregateService
 {
@@ -14,7 +15,13 @@ class InvestmentAggregateService
 
     public function averageInvestmentAmount(): float
     {
-        return (float) Investment::query()->avg('amount');
+        // Average each investor's total, then mean — matches "across all investors"
+        $totals = Investment::query()
+            ->select('investor_id')
+            ->selectRaw('SUM(amount) as total')
+            ->groupBy('investor_id');
+
+        return (float) DB::query()->fromSub($totals, 'investor_totals')->avg('total');
     }
 
     public function totalInvestments(): int

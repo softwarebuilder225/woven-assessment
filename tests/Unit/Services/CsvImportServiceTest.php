@@ -78,4 +78,25 @@ class CsvImportServiceTest extends TestCase
         $this->expectException(InvalidCsvException::class);
         $this->service->import($file);
     }
+
+    public function test_processes_rows_in_chunks(): void
+    {
+        $lines = ['investor_id,name,age,investment_amount,investment_date'];
+
+        for ($i = 1; $i <= 501; $i++) {
+            $lines[] = sprintf(
+                '%d,Investor %d,30,1000.00,01-01-2024',
+                1000 + $i,
+                $i
+            );
+        }
+
+        $file = UploadedFile::fake()->createWithContent('investors.csv', implode("\n", $lines));
+        $result = $this->service->import($file);
+
+        $this->assertSame(501, $result['investors_processed']);
+        $this->assertSame(501, $result['investments_processed']);
+        $this->assertDatabaseCount('investors', 501);
+        $this->assertDatabaseCount('investments', 501);
+    }
 }

@@ -62,7 +62,7 @@ Then run `php artisan migrate`.
 |--------|----------|-------------|
 | POST | `/api/import` | Upload CSV file |
 | GET | `/api/aggregates/average-age` | Average age across all investors |
-| GET | `/api/aggregates/average-investment-amount` | Average amount across all investment records |
+| GET | `/api/aggregates/average-investment-amount` | Average total investment amount per investor |
 | GET | `/api/aggregates/total-investments` | Total number of investment records |
 | GET | `/api/investors` | Paginated list of investors with total investment amount |
 | GET | `/api/investors?format=csv` | Export all investors as CSV |
@@ -96,9 +96,23 @@ curl "http://localhost:8000/api/investors?format=csv" -o investors.csv
 - CSV `investor_id` is stored as `external_id` on the `investors` table (separate from the internal primary key).
 - CSV dates use `DD-MM-YYYY` format.
 - One investment amount per investor per date; duplicates on re-import are updated, not inserted twice.
-- **Average investment amount** is the mean of all individual investment records, not the mean of per-investor totals.
+- **Average investment amount** is the mean of each investor's total invested amount (parallel to average age being per-investor).
 - **Investment amount** on the investor listing is the sum of all investments for that investor.
-- CSV imports are processed in chunks of 500 rows inside database transactions.
+
+## Scalability (10k+ records)
+
+The assessment expects the app to handle large CSV files and serve data efficiently. This is how each part is addressed:
+
+| Requirement | Approach |
+|-------------|----------|
+| CSV import | Stream rows with `fgetcsv()` — never load the full file into memory. Persist in chunks of 500 using `upsert()` inside transactions. |
+| Duplicate handling | `upsert()` on `external_id` and `(investor_id, investment_date)` avoids row-by-row SELECT/INSERT. |
+| Aggregates | `AVG()` / `COUNT()` run in the database, not in PHP. |
+| Investor listing | Cursor pagination (no slow `OFFSET` on large tables). `withSum()` fetches totals in one query per page. |
+| CSV export | Streamed response with `chunkById(500)` — processes 500 rows at a time. |
+| Indexes | Unique on `investors.external_id` and `investments(investor_id, investment_date)`. |
+
+With 10k rows, memory usage stays flat during import and export because only one chunk is held at a time.
 
 ## Architecture
 

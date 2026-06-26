@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Investor;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvestorQueryService
@@ -31,6 +32,8 @@ class InvestorQueryService
     public function exportCsv(): StreamedResponse
     {
         return response()->streamDownload(function () {
+            DB::connection()->disableQueryLog();
+
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, ['investor_id', 'name', 'age', 'investment_amount']);
